@@ -19,4 +19,4 @@ add_executable(MedFormatTools src/MedFormatTools.cxx)
 # target_include_directories(MedFormatTools PRIVATE "/home/fragkiadamis/Applications/argparse/v3.1/include/argparse/argparse.hpp")
 
 # Link the ITK libraries
-target_link_libraries(MedFormatTools ${ITK_LIBRARIES})
+target_link_libraries(MedFormatTools PRIVATE ${ITK_LIBRARIES})
