@@ -38,6 +38,12 @@ void ArgumentParser::parseArguments(int argc, char* argv[]) {
     program.add_argument("-i", "--input")
         .help("Specify the input file name")
         .required();
+        // TODO: Find the std::bad_any_cast error when trying to detect input format
+        // .action([this](const std::string& value) {
+        //     inputFormat = FormatUtils::detectInputFormat(p);
+        //     if (inputFormat == Format::UNKNOWN)
+        //         throw std::runtime_error("Unknown input format. Supported formats are DICOM and NIFTI");
+        // });
 
     // Add the output argument, which is required
     program.add_argument("-o", "--output")
@@ -46,13 +52,13 @@ void ArgumentParser::parseArguments(int argc, char* argv[]) {
 
     // Add the format argument to specify target output format (DICOM or NIFTI)
     program.add_argument("-f", "--format")
-        .help("Specify the target output format (DICOM|NIFTI)")
+        .help("Specify the target output format [DICOM|NIFTI]")
         .required()
         .action([this](const std::string& value) {
             // Parse the target format and validate it
             targetFormat = FormatUtils::parseFormat(value);
             if (targetFormat == Format::UNKNOWN) {
-                throw std::runtime_error("Invalid target format. Must be either 'DICOM' or 'NIFTI'");
+                throw std::runtime_error("Invalid target format. Must be either DICOM or NIFTI");
             }
         });
 
@@ -61,7 +67,6 @@ void ArgumentParser::parseArguments(int argc, char* argv[]) {
         .help("Specify the modality of the image (CT|MR|CXR)")
         .default_value("CT")
         .action([this](const std::string& value) {
-            // Parse the modality and store it
             modality = FormatUtils::parseModality(value);
         });
 

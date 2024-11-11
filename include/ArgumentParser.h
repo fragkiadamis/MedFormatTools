@@ -23,6 +23,7 @@ private:
     bool verbose;
     std::filesystem::path inputPath;
     std::filesystem::path outputPath;
+    Format inputFormat;
     Format targetFormat;
     Modality modality;
 

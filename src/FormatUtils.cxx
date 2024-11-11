@@ -1,4 +1,5 @@
 #include "FormatUtils.h"
+#include <zlib.h>
 
 // Converts a Format enum value to a corresponding string
 std::string FormatUtils::toString(Format format) {
@@ -23,8 +24,10 @@ Format FormatUtils::parseFormat(const std::string& format) {
     std::string upperFormat = format;
     std::transform(upperFormat.begin(), upperFormat.end(), upperFormat.begin(), ::toupper);
 
-    if (upperFormat == "DICOM") return Format::DICOM;
-    if (upperFormat == "NIFTI") return Format::NIFTI;
+    if (upperFormat == "DICOM")
+        return Format::DICOM;
+    if (upperFormat == "NIFTI")
+        return Format::NIFTI;
     return Format::UNKNOWN;
 }
 
@@ -39,30 +42,46 @@ Modality FormatUtils::parseModality(const std::string& modality) {
     return Modality::CT;
 }
 
-// The following function is commented out but would detect the format of an input file based on its extension and content.
-// It would attempt to identify the format as either DICOM or NIFTI by checking file extensions and magic bytes.
- 
-// Format FormatUtils::detectInputFormat(const fs::path& inputPath) {
-//     if (!fs::exists(inputPath)) return Format::UNKNOWN;  // If the file doesn't exist, return UNKNOWN format
+// Reads the first 128 bytes of a file into a buffer
+void FormatUtils::getFileHeader(const std::filesystem::path& inputPath, char *header, int position) {
+    std::ifstream file(inputPath, std::ios::binary);
+    file.seekg(position, std::ios::beg);
+    file.read(header, 4);
+}
 
-//     string ext = inputPath.extension().string();  // Get the file extension (e.g., ".dcm", ".nii")
-//     transform(ext.begin(), ext.end(), ext.begin(), ::tolower);  // Convert extension to lowercase for comparison
+// Detects the format of an input file based on its extension or headercpp
+Format FormatUtils::detectInputFormat(const std::filesystem::path& inputPath) {
+    std::string extension = inputPath.extension().string();
+    std::transform(extension.begin(), extension.end(), extension.begin(), ::tolower);
 
-//     if (ext == ".dcm") return Format::DICOM;  // If the extension is ".dcm", return DICOM format
-//     if (ext == ".nii" || ext == ".nii.gz") return Format::NIFTI;  // If the extension is ".nii" or ".nii.gz", return NIFTI format
+    // Check if the data contain the DICOM magic number
+    char header[4] = {0};
+    getFileHeader(inputPath, header, 128);
+    if (extension == ".dcm" or (strncmp(header, "DICM", 4) == 0))
+        return Format::DICOM;
+    
+    // Check if the data contain the NIFTI magic number
+    getFileHeader(inputPath, header, 344);
+    if (extension == ".nii" or (strncmp(header, "n\x1e", 2) == 0))
+        return Format::NIFTI;
 
-//     ifstream file(inputPath, ios::binary);  // Open the file in binary mode to inspect its contents
-//     if (file) {
-//         char header[4] = {0};  // Create a buffer to hold the header data
+    // Decompress the file if it is a NIFTI file compressed with gzip
+    if (inputPath.string().substr(inputPath.string().size() - 7) == ".nii.gz") {
+        gzFile gzFile = gzopen(inputPath.c_str(), "rb");
+        const size_t bufferSize = 1024;
+        char buffer[bufferSize];
+        std::string decompressedContent;
+        
+        // Decompress the file and store the content in the decompressedContent string
+        int bytesRead;
+        while ((bytesRead = gzread(gzFile, buffer, bufferSize)) > 0)
+            decompressedContent.append(buffer, bytesRead);
+        gzclose(gzFile);
 
-//         file.seekg(128, ios::beg);  // Seek to position 128 (DICOM file header offset)
-//         file.read(header, 4);  // Read the first 4 bytes of the DICOM header
-//         if (strncmp(header, "DICM", 4) == 0) return Format::DICOM;  // If the header starts with "DICM", return DICOM format
+        // Check if the decompressed data contain the NIFTI magic number
+        if (strncmp(decompressedContent.c_str() + 344, "n\x1e", 2) == 0 || strncmp(decompressedContent.c_str() + 344, "n+1", 3) == 0)
+            return Format::NIFTI;
+    }
 
-//         file.seekg(0, ios::beg);  // Seek to the beginning of the file
-//         file.read(header, 4);  // Read the first 4 bytes of the file
-//         if (header[0] == 0x6E && header[1] == 0x1E) return Format::NIFTI;  // If the header matches the NIFTI magic bytes, return NIFTI format
-//     }
-
-//     return Format::UNKNOWN;  // Return UNKNOWN if the format could not be determined
-// }
+    return Format::UNKNOWN;
+}
