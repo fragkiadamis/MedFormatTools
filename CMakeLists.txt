@@ -1,6 +1,9 @@
 # Set the minimum required version of CMake
 cmake_minimum_required(VERSION 3.28.3)
 
+# Include FetchContent for downloading argparse
+include(FetchContent)
+
 # If the CMake policies CMP0020 and CMP0071 are not set, set them to "NEW" behavior
 if(POLICY CMP0020)
     cmake_policy(SET CMP0020 NEW)
@@ -19,10 +22,18 @@ set(CMAKE_AUTORCC ON)
 # Set the project name and version
 project(MedFormatTools VERSION 0.1)
 
-# Find the argparse package and include directory for argparse headers
-find_package(argparse REQUIRED)
-message(STATUS "argparse found: ${argparse_FOUND} (version: ${argparse_VERSION})")
-include_directories("/home/fragkiadamis/Applications/argparse/v3.1/include")
+# Fetch argparse
+FetchContent_Declare(
+    argparse
+    GIT_REPOSITORY https://github.com/p-ranav/argparse.git
+    GIT_TAG v3.1
+)
+FetchContent_MakeAvailable(argparse)
+
+# # Find the local argparse package and include directory for argparse headers
+# find_package(argparse REQUIRED)
+# message(STATUS "argparse found: ${argparse_FOUND} (version: ${argparse_VERSION})")
+# include_directories("/path/to/argparse/v3.1/include")
 
 # Find the ITK package
 find_package(ITK REQUIRED)
