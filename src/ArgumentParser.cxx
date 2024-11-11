@@ -37,18 +37,22 @@ void ArgumentParser::parseArguments(int argc, char* argv[]) {
     // Add the input argument, which is required
     program.add_argument("-i", "--input")
         .help("Specify the input file name")
-        .required();
-        // TODO: Find the std::bad_any_cast error when trying to detect input format
-        // .action([this](const std::string& value) {
-        //     inputFormat = FormatUtils::detectInputFormat(p);
-        //     if (inputFormat == Format::UNKNOWN)
-        //         throw std::runtime_error("Unknown input format. Supported formats are DICOM and NIFTI");
-        // });
+        .required()
+        .action([this](const std::filesystem::path& value) {
+            inputPath = value;
+            inputFormat = FormatUtils::detectInputFormat(inputPath);
+            std::cout << "Detected input format: " << FormatUtils::toString(inputFormat) << std::endl;
+            if (inputFormat == Format::UNKNOWN)
+                throw std::runtime_error("Unknown input format. Supported formats are DICOM and NIFTI");
+        });
 
     // Add the output argument, which is required
     program.add_argument("-o", "--output")
         .help("Specify the output path")
-        .required();
+        .required()
+        .action([this](const std::filesystem::path& value) {
+            outputPath = value;
+        });
 
     // Add the format argument to specify target output format (DICOM or NIFTI)
     program.add_argument("-f", "--format")
@@ -57,9 +61,8 @@ void ArgumentParser::parseArguments(int argc, char* argv[]) {
         .action([this](const std::string& value) {
             // Parse the target format and validate it
             targetFormat = FormatUtils::parseFormat(value);
-            if (targetFormat == Format::UNKNOWN) {
+            if (targetFormat == Format::UNKNOWN)
                 throw std::runtime_error("Invalid target format. Must be either DICOM or NIFTI");
-            }
         });
 
     // Add modality argument with a default value of "CT"
@@ -82,18 +85,15 @@ void ArgumentParser::parseArguments(int argc, char* argv[]) {
         throw std::runtime_error("Argument parsing failed: " + std::string(err.what()));
     }
 
-    // Store parsed values for verbosity, input and output paths
+    // Store verbosity
     verbose = program.get<bool>("--verbose");
-    inputPath = program.get<std::string>("--input");
-    outputPath = program.get<std::string>("--output");
 }
 
 // Validate the input file path and the output path
 void ArgumentParser::validatePaths() {
     // Check if input file exists
-    if (!std::filesystem::exists(inputPath)) {
+    if (!std::filesystem::exists(inputPath))
         throw std::runtime_error("Input file does not exist: " + inputPath.string());
-    }
 
     // Validate output path for DICOM (check if directory exists, create if necessary)
     std::filesystem::path outputDir = (targetFormat == Format::DICOM) ? outputPath : outputPath.parent_path();

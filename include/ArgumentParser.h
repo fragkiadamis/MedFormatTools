@@ -1,8 +1,6 @@
 #ifndef ARGUMENTPARSER_H
 #define ARGUMENTPARSER_H
 
-#include <string>
-#include <filesystem>
 #include <argparse/argparse.hpp>
 
 #include "FormatUtils.h"
@@ -20,12 +18,12 @@ public:
     void printArguments() const;
 
 private:
-    bool verbose;
     std::filesystem::path inputPath;
     std::filesystem::path outputPath;
     Format inputFormat;
     Format targetFormat;
     Modality modality;
+    bool verbose;
 
     void parseArguments(int argc, char* argv[]);
     void validatePaths();
