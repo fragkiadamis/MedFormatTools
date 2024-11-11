@@ -2,6 +2,7 @@
 #define MEDFORMATTOOLS_H
 
 #include "ArgParser.h"
+#include "Converter.h"
 
 class MedFormatTools {
 public:
@@ -10,6 +11,7 @@ public:
 
 private:
     ArgParser argParser;
+    Converter converter;
 };
 
-#endif
+#endif // MEDFORMATTOOLS_H

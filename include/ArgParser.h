@@ -10,31 +10,17 @@
 
 #include <argparse/argparse.hpp>
 
-enum class Format {
-    DICOM,
-    NIFTI,
-    UNKNOWN
-};
-
-enum class Modality {
-    CT,
-    MR,
-    CXR,
-};
+#include "Types.h"
 
 class ArgParser {
 public:
     ArgParser(int argc, char* argv[]);
-    static Format parseFormat(const std::string& format);
-    static Modality parseModality(const std::string& modality);
     
     bool isVerbose() const;
     const std::filesystem::path& getInputPath() const;
     const std::filesystem::path& getOutputPath() const;
-    Format getTargetFormat() const;
-    Modality getModality() const;
-    static std::string toString(Format format);
-    static std::string toString(Modality modality);
+    const Format& getFormat() const;
+    const Modality& getModality() const;
 
     void printArguments() const;
 
@@ -51,4 +37,4 @@ private:
     static Format detectInputFormat(const std::filesystem::path& inputPath);
 };
 
-#endif
+#endif // ARGPARSER_H

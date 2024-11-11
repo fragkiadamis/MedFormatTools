@@ -5,60 +5,19 @@ ArgParser::ArgParser(int argc, char* argv[]) {
     parseArguments(argc, argv);
 }
 
-// Parses a string into a Format enum value (DICOM, NIFTI, or UNKNOWN)
-Format ArgParser::parseFormat(const std::string& format) {
-    std::string upperFormat = format;
-    std::transform(upperFormat.begin(), upperFormat.end(), upperFormat.begin(), ::toupper);
-
-    if (upperFormat == "DICOM")
-        return Format::DICOM;
-    if (upperFormat == "NIFTI")
-        return Format::NIFTI;
-    return Format::UNKNOWN;
-}
-
-// Parses a string into a Modality enum value (CT, MR, CXR, default to CT)
-Modality ArgParser::parseModality(const std::string& modality) {
-    std::string upperModality = modality;  // Create a copy of the input string
-    std::transform(upperModality.begin(), upperModality.end(), upperModality.begin(), ::toupper);
-
-    if (upperModality == "CT") return Modality::CT;
-    if (upperModality == "MR") return Modality::MR;
-    if (upperModality == "CXR") return Modality::CXR;
-    return Modality::CT;
-}
-
 // Get the parsed arguments
 bool ArgParser::isVerbose() const { return verbose; }
 const std::filesystem::path& ArgParser::getInputPath() const { return inputPath; }
 const std::filesystem::path& ArgParser::getOutputPath() const { return outputPath; }
-Format ArgParser::getTargetFormat() const { return targetFormat; }
-Modality ArgParser::getModality() const { return modality; }
-
-// Converts a Format enum value to a corresponding string
-std::string ArgParser::toString(Format format) {
-    switch (format) {
-        case Format::DICOM: return "DICOM";
-        case Format::NIFTI: return "NIFTI";
-        default: return "Unknown";
-    }
-}
-
-// Converts a Modality enum value to a corresponding string
-std::string ArgParser::toString(Modality modality) {
-    switch (modality) {
-        case Modality::MR: return "MR";
-        case Modality::CXR: return "XRay";
-        default: return "CT";
-    }
-}
+const Format& ArgParser::getFormat() const { return inputFormat; }
+const Modality& ArgParser::getModality() const { return modality; }
 
 // Print all the parsed arguments to the console
 void ArgParser::printArguments() const {
-    std::cout << "Input Path: " << inputPath << std::endl;
-    std::cout << "Output Path: " << outputPath << std::endl;
-    std::cout << "Target Format: " << toString(targetFormat) << std::endl;
-    std::cout << "Modality: " << toString(modality) << std::endl;
+    std::cout << "Input path: " << std::filesystem::current_path() / inputPath << std::endl;
+    std::cout << "Output path: " << std::filesystem::current_path() / outputPath << std::endl;
+    std::cout << "Target format: " << Types::toString(targetFormat) << std::endl;
+    std::cout << "Target modality: " << Types::toString(modality) << std::endl;
 }
 
 // Parse command-line arguments passed to the program
@@ -77,7 +36,6 @@ void ArgParser::parseArguments(int argc, char* argv[]) {
                 throw std::runtime_error("Input file does not exist: " + inputPath.string());
 
             inputFormat = detectInputFormat(inputPath);
-            std::cout << "Detected input format: " << toString(inputFormat) << std::endl;
             if (inputFormat == Format::UNKNOWN)
                 throw std::runtime_error("Unknown input format. Supported formats are DICOM and NIFTI");
         });
@@ -96,7 +54,7 @@ void ArgParser::parseArguments(int argc, char* argv[]) {
         .required()
         .action([this](const std::string& value) {
             // Parse the target format and validate it
-            targetFormat = parseFormat(value);
+            targetFormat = Types::parseFormat(value);
             if (targetFormat == Format::UNKNOWN)
                 throw std::runtime_error("Invalid target format. Must be either DICOM or NIFTI");
         });
@@ -106,7 +64,7 @@ void ArgParser::parseArguments(int argc, char* argv[]) {
         .help("Specify the modality of the image (CT|MR|CXR)")
         .default_value("CT")
         .action([this](const std::string& value) {
-            modality = parseModality(value);
+            modality = Types::parseModality(value);
         });
 
     // Add the verbose flag to enable detailed output if specified
@@ -140,12 +98,12 @@ Format ArgParser::detectInputFormat(const std::filesystem::path& inputPath) {
     // Check if the data contain the DICOM magic number
     char header[4] = {0};
     getFileHeader(inputPath, header, 128);
-    if (extension == ".dcm" or (strncmp(header, "DICM", 4) == 0))
+    if (extension == ".dcm" && (strncmp(header, "DICM", 4) == 0))
         return Format::DICOM;
     
     // Check if the data contain the NIFTI magic number
     getFileHeader(inputPath, header, 344);
-    if (extension == ".nii" or (strncmp(header, "n\x1e", 2) == 0))
+    if (extension == ".nii" && (strncmp(header, "n\x1e", 2) == 0))
         return Format::NIFTI;
 
     // Decompress the file if it is a NIFTI file compressed with gzip
