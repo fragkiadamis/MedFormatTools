@@ -1,7 +1,7 @@
 #ifndef MEDFORMATTOOLS_H
 #define MEDFORMATTOOLS_H
 
-#include "ArgumentParser.h"
+#include "ArgParser.h"
 
 class MedFormatTools {
 public:
@@ -9,7 +9,7 @@ public:
     void run();
 
 private:
-    ArgumentParser argParser;
+    ArgParser argParser;
 };
 
 #endif
