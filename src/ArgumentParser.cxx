@@ -2,23 +2,14 @@
 
 // Constructor that parses the command-line arguments and validates paths
 ArgumentParser::ArgumentParser(int argc, char* argv[]) {
-    parseArguments(argc, argv);  // Parse arguments from command line
-    validatePaths();  // Ensure input and output paths are valid
+    parseArguments(argc, argv);
 }
 
-// Return the verbosity flag indicating whether verbose output is requested
+// Get the parsed arguments
 bool ArgumentParser::isVerbose() const { return verbose; }
-
-// Return the input file path specified by the user
 const std::filesystem::path& ArgumentParser::getInputPath() const { return inputPath; }
-
-// Return the output file path specified by the user
 const std::filesystem::path& ArgumentParser::getOutputPath() const { return outputPath; }
-
-// Return the target format specified by the user (DICOM or NIFTI)
 Format ArgumentParser::getTargetFormat() const { return targetFormat; }
-
-// Return the image modality specified by the user (CT, MR, CXR)
 Modality ArgumentParser::getModality() const { return modality; }
 
 // Print all the parsed arguments to the console
@@ -40,6 +31,10 @@ void ArgumentParser::parseArguments(int argc, char* argv[]) {
         .required()
         .action([this](const std::filesystem::path& value) {
             inputPath = value;
+            // Check if input file exists
+            if (!std::filesystem::exists(inputPath))
+                throw std::runtime_error("Input file does not exist: " + inputPath.string());
+
             inputFormat = FormatUtils::detectInputFormat(inputPath);
             std::cout << "Detected input format: " << FormatUtils::toString(inputFormat) << std::endl;
             if (inputFormat == Format::UNKNOWN)
@@ -87,18 +82,4 @@ void ArgumentParser::parseArguments(int argc, char* argv[]) {
 
     // Store verbosity
     verbose = program.get<bool>("--verbose");
-}
-
-// Validate the input file path and the output path
-void ArgumentParser::validatePaths() {
-    // Check if input file exists
-    if (!std::filesystem::exists(inputPath))
-        throw std::runtime_error("Input file does not exist: " + inputPath.string());
-
-    // Validate output path for DICOM (check if directory exists, create if necessary)
-    std::filesystem::path outputDir = (targetFormat == Format::DICOM) ? outputPath : outputPath.parent_path();
-    if (!std::filesystem::exists(outputDir)) {
-        std::filesystem::create_directories(outputDir);
-    } else if (!std::filesystem::is_directory(outputDir))
-        throw std::runtime_error("Output path exists but is not a directory: " + outputDir.string());
 }

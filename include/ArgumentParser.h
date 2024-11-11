@@ -26,7 +26,6 @@ private:
     bool verbose;
 
     void parseArguments(int argc, char* argv[]);
-    void validatePaths();
 };
 
 #endif
