@@ -33,7 +33,9 @@ private:
     bool verbose;
 
     void parseArguments(int argc, char* argv[]);
-    static void getFileHeader(const std::filesystem::path& inputPath, char *header, int position);
+    static void getFileHeader(const std::filesystem::path& inputPath, char *header, unsigned short position, size_t size);
+    static bool verifiedFormat(const std::filesystem::path& inputPath, std::string& extension, unsigned short position, const char *formatSignature, size_t signatureSize);
+    static std::string decompressGzFile(const std::filesystem::path& inputPath);
     static Format detectInputFormat(const std::filesystem::path& inputPath);
 };
 

@@ -5,6 +5,7 @@ namespace Types {
     Format parseFormat(const std::string& str) {
         if (str == "DICOM") return Format::DICOM;
         if (str == "NIFTI") return Format::NIFTI;
+        if (str == "PNG") return Format::PNG;
         return Format::UNKNOWN;
     }
 
@@ -19,6 +20,7 @@ namespace Types {
         switch (format) {
             case Format::DICOM: return "DICOM";
             case Format::NIFTI: return "NIFTI";
+            case Format::PNG: return "PNG";
             default: return "UNKNOWN";
         }
     }

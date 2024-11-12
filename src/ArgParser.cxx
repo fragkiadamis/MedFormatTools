@@ -37,7 +37,7 @@ void ArgParser::parseArguments(int argc, char* argv[]) {
 
             inputFormat = detectInputFormat(inputPath);
             if (inputFormat == Format::UNKNOWN)
-                throw std::runtime_error("Unknown input format. Supported formats are DICOM and NIFTI");
+                throw std::runtime_error("Unknown input format. Supported formats are DICOM, NIFTI or PNG");
         });
 
     // Add the output argument, which is required
@@ -48,15 +48,15 @@ void ArgParser::parseArguments(int argc, char* argv[]) {
             outputPath = value;
         });
 
-    // Add the format argument to specify target output format (DICOM or NIFTI)
+    // Add the format argument to specify target output format (DICOM, NIFTI or PNG)
     program.add_argument("-f", "--format")
-        .help("Specify the target output format [DICOM|NIFTI]")
+        .help("Specify the target output format [DICOM|NIFTI|PNG]")
         .required()
         .action([this](const std::string& value) {
             // Parse the target format and validate it
             targetFormat = Types::parseFormat(value);
             if (targetFormat == Format::UNKNOWN)
-                throw std::runtime_error("Invalid target format. Must be either DICOM or NIFTI");
+                throw std::runtime_error("Invalid target format. Must be either DICOM, NIFTI or PNG");
         });
 
     // Add modality argument with a default value of "CT"
@@ -84,10 +84,33 @@ void ArgParser::parseArguments(int argc, char* argv[]) {
 }
 
 // Reads the first 128 bytes of a file into a buffer
-void ArgParser::getFileHeader(const std::filesystem::path& inputPath, char *header, int position) {
+void ArgParser::getFileHeader(const std::filesystem::path& inputPath, char *header, unsigned short position, size_t size) {
     std::ifstream file(inputPath, std::ios::binary);
     file.seekg(position, std::ios::beg);
     file.read(header, 4);
+}
+
+bool ArgParser::verifiedFormat(const std::filesystem::path& inputPath, std::string& extension, unsigned short position, const char *formatSignature, size_t signatureSize) {
+    char fileHeader[signatureSize] = {0};
+    getFileHeader(inputPath, fileHeader, position, signatureSize);
+
+    // Check if the header matches the first 4 bytes of the PNG signature
+    return (strncmp(fileHeader, formatSignature, signatureSize) == 0);
+}
+
+std::string ArgParser::decompressGzFile(const std::filesystem::path& inputPath) {
+    gzFile gzFile = gzopen(inputPath.c_str(), "rb");
+    const size_t bufferSize = 1024;
+    char buffer[bufferSize];
+    std::string decompressedContent;
+    
+    // Decompress the file and store the content in the decompressedContent string
+    int bytesRead;
+    while ((bytesRead = gzread(gzFile, buffer, bufferSize)) > 0)
+        decompressedContent.append(buffer, bytesRead);
+    gzclose(gzFile);
+
+    return decompressedContent;
 }
 
 // Detects the format of an input file based on its extension or headercpp
@@ -95,31 +118,14 @@ Format ArgParser::detectInputFormat(const std::filesystem::path& inputPath) {
     std::string extension = inputPath.extension().string();
     std::transform(extension.begin(), extension.end(), extension.begin(), ::tolower);
 
-    // Check if the data contain the DICOM magic number
-    char header[4] = {0};
-    getFileHeader(inputPath, header, 128);
-    if (extension == ".dcm" && (strncmp(header, "DICM", 4) == 0))
+    if (extension == ".png" && verifiedFormat(inputPath, extension, 0, "\x89PNG", 4))
+        return Format::PNG;
+    if (extension == ".dcm" && verifiedFormat(inputPath, extension, 128, "DICM", 4))
         return Format::DICOM;
-    
-    // Check if the data contain the NIFTI magic number
-    getFileHeader(inputPath, header, 344);
-    if (extension == ".nii" && (strncmp(header, "n\x1e", 2) == 0))
+    if (extension == ".nii" && verifiedFormat(inputPath, extension, 344, "n\x1e", 4))
         return Format::NIFTI;
-
-    // Decompress the file if it is a NIFTI file compressed with gzip
     if (inputPath.string().substr(inputPath.string().size() - 7) == ".nii.gz") {
-        gzFile gzFile = gzopen(inputPath.c_str(), "rb");
-        const size_t bufferSize = 1024;
-        char buffer[bufferSize];
-        std::string decompressedContent;
-        
-        // Decompress the file and store the content in the decompressedContent string
-        int bytesRead;
-        while ((bytesRead = gzread(gzFile, buffer, bufferSize)) > 0)
-            decompressedContent.append(buffer, bytesRead);
-        gzclose(gzFile);
-
-        // Check if the decompressed data contain the NIFTI magic number
+        std::string decompressedContent = decompressGzFile(inputPath);
         if (strncmp(decompressedContent.c_str() + 344, "n\x1e", 2) == 0 || strncmp(decompressedContent.c_str() + 344, "n+1", 3) == 0)
             return Format::NIFTI;
     }

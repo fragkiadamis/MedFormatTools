@@ -4,7 +4,7 @@
 #include <string>
 
 // Forward declaration of the enums
-enum class Format { UNKNOWN, DICOM, NIFTI };
+enum class Format { UNKNOWN, DICOM, NIFTI, PNG };
 enum class Modality { UNKNOWN, CT, MR, CXR };
 
 // Function declarations (no function bodies here)
